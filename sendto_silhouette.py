@@ -234,7 +234,6 @@ class SendtoSilhouette(inkex.Effect):
     self.resumeMode = False
     self.bStopped = False
     self.plotCurrentLayer = True
-    self.allLayers = True               # True: all except hidden layers. False: only selected layers.
     self.step_scaling_factor = 1        # see also px2mm()
     self.ptFirst = None
     self.fPrevX = None
@@ -439,6 +438,17 @@ class SendtoSilhouette(inkex.Effect):
                 # so on, until the string ends or the string no longer consists of
                 # digit characters only.
 
+                self.plotCurrentLayer = False    #Temporarily assume that we aren't plotting the layer
+
+		if currentLayerName.lower().startswith('regmark'):
+			return; # Never plot regmark
+		if currentLayerName.lower().startswith('print'):
+			return; # Never plot print
+		if currentLayerName.lower().startswith('plot'):
+			self.plotCurrentLayer = True;
+			self.LayersPlotted += 1;
+			return; # Always plot 'plot', unless hidden.
+
                 MaxLength = len( CurrentLayerName )
                 if MaxLength > 0:
                         while stringPos <= MaxLength:
@@ -448,7 +458,6 @@ class SendtoSilhouette(inkex.Effect):
                                 else:
                                         break
 
-                self.plotCurrentLayer = False    #Temporarily assume that we aren't plotting the layer
                 if ( str.isdigit( TempNumString ) ):
                         if ( self.svgLayer == int( float( TempNumString ) ) ):
                                 self.plotCurrentLayer = True    #We get to plot the layer!
@@ -494,9 +503,8 @@ class SendtoSilhouette(inkex.Effect):
                                         else:
                                                 self.plotCurrentLayer = True
 
-                                        if not self.allLayers:
-                                                # inkex.errormsg('Plotting layer named: ' + node.get(inkex.addNS('label', 'inkscape')))
-                                                self.DoWePlotLayer( node.get( inkex.addNS( 'label', 'inkscape' ) ) )
+					# Always call DoWePlotLayer
+					self.DoWePlotLayer( node.get( inkex.addNS( 'label', 'inkscape' ) ) )
                                 self.recursivelyTraverseSvg( node, parent_visibility=v )
 
                         elif node.tag == inkex.addNS( 'use', 'svg' ) or node.tag == 'use':
