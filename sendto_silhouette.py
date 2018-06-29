@@ -242,6 +242,7 @@ class SendtoSilhouette(inkex.Effect):
     self.fY = None
     self.svgLastPath = 0
     self.nodeCount = 0
+    self.LayersPlotted = 0
 
     self.paths = []
     self.transforms = {}
@@ -295,7 +296,7 @@ class SendtoSilhouette(inkex.Effect):
           help="[1..8], cut/draw each path object multiple times.")
     self.OptionParser.add_option('-p', '--pressure',
           action = 'store', dest = 'pressure', type = 'int', default = 10,
-          help="[1..18], or 0 for media default")
+          help="[1..36], or 0 for media default")
     self.OptionParser.add_option('-r', '--reversetoggle',
           action = 'store', dest = 'reversetoggle', type = 'inkbool', default = False,
           help="Cut each path the other direction. Affects every second pass when multipass.")
@@ -420,14 +421,87 @@ class SendtoSilhouette(inkex.Effect):
 
 
   def DoWePlotLayer( self, strLayerName ):
-                """
-                We are only plotting *some* layers. Check to see
+                """We are only plotting *some* layers. Check to see
                 whether or not we're going to plot this one.
 
-                First: scan first 4 chars of node id for first non-numeric character,
-                and scan the part before that (if any) into a number
+                '^regmark.*' - never plot.
 
-                Then, see if the number matches the layer.
+                '^print.*' - never plot.
+
+                '^plot.*' - if present, and not hidden, plot.
+
+                NOTE: Do NOT mix 'plot' with the following!  The
+                behavior of 'plot' in combination with the naming
+                convention below is undefined.
+
+                '^<order>[.<holder>][.<name>][;mnemonic]'
+
+                - Order is an integer, and from 0 to N, specifies the
+                  order the layer is to be applied in.
+
+                - Holder is also an integer, separated from order by a
+                  period.  It specifies which tool holder to use for
+                  this layer.  Use 0 for the first holder, 1 for the
+                  second, and so on.
+
+                - Name is text, separated from either holder or order
+                  by a period, and controls what settings are used on
+                  the tool (speed, pressure).  Valid choices are:
+
+                  - 'pen' : assumed to be drawing with some sort of
+                    pen.
+
+                  - 'cut' : assumed to be cutting the material with a
+                    blade.
+
+                  - 'score' : assumed to be scoring the material with
+                    either a blade or other tool.
+
+                  - 'pause' : triggers a pause in plotting for you to
+                    switch out tools in the plotter.  The layer is
+                    otherwise ignored.
+
+                - Mnemonic is text, separated from all by a semicolon,
+                  and serves as a reminder to the user what this layer
+                  is for.
+
+                In all cases, it is the responsibility of the user to
+                hide these layers when you wish to print the design
+                for print-n-cut.
+
+                For example:
+
+                - regmarks : The layer is registration marks, kept
+                  separate to keep it from being damaged as you work
+                  on your design.
+
+                - print : This layer, along with 'regmarks' is sent to
+                  the printer.  (Actually all visible layers are sent
+                  to the printer.  You have to hide anything you don't
+                  want printed.)
+
+                - 0.0.cut : Being layer zero, this is the first layer
+                  plotted.  It uses tool holder zero, which from the
+                  name must be a blade.  Not that the extension has
+                  the slightest idea what tool you have loaded.
+
+                - 1.1.score : Being layer one, this is the second
+                  layer plotted.  It uses tool holder one, which from
+                  the name must be some sort of scoring tool.  (Note:
+                  You may wish to score before you cut, to avoid
+                  having the scoring tool rip up the cut paper.)
+
+                - 2.pause : Third layer, triggers a pause, which will
+                  halt action until you say to continue.  This allows
+                  you to switch tools in the holder(s).  Pen is
+                  ignored in this case.
+
+                - 3.0.pen;red : Fourth layer, uses tool holder zero,
+                  and presumably will hold a red pen.
+
+                - 4.1.pen;black : Fifth layer, uses tool holder one,
+                  and presumably will hold a black pen.
+
                 """
 
                 TempNumString = 'x'
@@ -440,11 +514,11 @@ class SendtoSilhouette(inkex.Effect):
 
                 self.plotCurrentLayer = False    #Temporarily assume that we aren't plotting the layer
 
-		if currentLayerName.lower().startswith('regmark'):
+		if CurrentLayerName.lower().startswith('regmark'):
 			return; # Never plot regmark
-		if currentLayerName.lower().startswith('print'):
+		if CurrentLayerName.lower().startswith('print'):
 			return; # Never plot print
-		if currentLayerName.lower().startswith('plot'):
+		if CurrentLayerName.lower().startswith('plot'):
 			self.plotCurrentLayer = True;
 			self.LayersPlotted += 1;
 			return; # Always plot 'plot', unless hidden.
@@ -501,10 +575,7 @@ class SendtoSilhouette(inkex.Effect):
                                         if (node.get('style','') == 'display:none'):
                                                 self.plotCurrentLayer = False
                                         else:
-                                                self.plotCurrentLayer = True
-
-					# Always call DoWePlotLayer
-					self.DoWePlotLayer( node.get( inkex.addNS( 'label', 'inkscape' ) ) )
+						self.DoWePlotLayer( node.get( inkex.addNS( 'label', 'inkscape' ) ) )
                                 self.recursivelyTraverseSvg( node, parent_visibility=v )
 
                         elif node.tag == inkex.addNS( 'use', 'svg' ) or node.tag == 'use':
