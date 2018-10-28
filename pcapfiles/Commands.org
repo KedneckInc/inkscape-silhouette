@@ -1,0 +1,291 @@
+#+EXCLUDE_TAGs: SKIP
+* Commands for Silhouette Cameo 3
+
+| KEY     | Description                                             |
+|---------+---------------------------------------------------------|
+| 00 - ff | Two hexadecimal digits, unquoted, are sent as is.       |
+| '...'   | Text inside quotes is a character string sent verbatim. |
+| xxx     | X coordinate.[fn:1]                                     |
+| yyy     | Y coordinate.[fn:1]                                     |
+| n       | Pen number                                              |
+| d       | Auto Blade Depth                                        |
+| s       | Speed                                                   |
+| o       | Blade Offset                                            |
+| z       | unknown                                                 |
+| f       | Force (0-33)                                            |
+| a       | '1' = Lift cutting head at sharp angles; '0' = don't.   |
+| r       | regsearch                                               |
+| w       | width registration search                               |
+| h       | height registation search                               |
+| nnn     | First unknown purpose number.[fn:1]                     |
+| mmm     | Second unknown purpose number.[fn:1]                    |
+| eee     | Media Number                                            |
+
+| Category   | Command Format        | Response Format              | Description                                                 |
+|------------+-----------------------+------------------------------+-------------------------------------------------------------|
+| Action     | 'BE1' ... 03          | n/a                          | New drawing command.[fn:2]                                  |
+| Action     | 'BE2' ... 03          | n/a                          | New drawing command.                                        |
+| Action     | 'M' xxx ',' yyy 03    | n/a                          | Move selected pen to coordinates.                           |
+| Unknown    | 'FY' n 03             | n/a                          |                                                             |
+| Auto Blade | 'TF' d ',' n 03       | n/a                          | Set Auto Blade[fn:4]                                        |
+| Get Info   | 'FA' 03               | nnnnn ',' mmmmm     03[fn:5] | Unknown: 2 five digit numbers.                              |
+| Get Info   | 'FG' 03               | 'CAMEO 3 V1.50    ' 03       | Get Version: 17 Chars                                       |
+| Get Info   | 'FQ0' 03              | nnnnn               03       | Unknown: 1 five digit number.  Maybe last speed set?        |
+| Get Info   | 'FQ2' 03              | nnnnn               03       | Unknown: 1 five digit number.  Maybe last blade offset?     |
+| Get Info   | 'TB71' 03             | nnnnn ',' mmmmm     03[fn:5] | Unknown: 2 five digit numbers.                              |
+| Get Info   | 'U' 03                | xxxxxx ',' yyyyyy   03       | Get Lower Right Coordinates: 2 six digit numbers.           |
+| Get Info   | '[' 03                | xxxxxx ',' yyyyyy   03       | Get Upper Left Coords: 2 six digit numbers.                 |
+| Set Config | '!' s ',' n 03        | n/a                          | Set Speed to 5 for Pen #1[fn:91]                            |
+| Set Config | 'FC' o ',' z ',' n 03 | n/a                          | Set Cutting Offset to 18 for Pen #1[fn:91]                  |
+| Set Config | 'FX' f ',' n 03       | n/a                          | Set Force to 33 for Pen #1[fn:91]                           |
+| Set Config | 'Z,4288' 03           | n/a                          | Set Lower Right Boundary                                    |
+| Set Config | '\30,30' 03           | n/a                          | Set Upper Left Boundary                                     |
+| Set Pen    | 'J' n 03              | n/a                          | Select Pen #N[fn:6]                                         |
+| Status     | 1b 05                 | 30 03                        | Status?  Ready                                              |
+| Status     | 1b 05                 | 31 03                        | Status?  Moving                                             |
+| Status     | 1b 05                 | 32 03                        | Status?  ???                                                |
+| Status     | 1b 05                 | 33 03                        | Status?  Paused                                             |
+| Unknown    | 'FN0' 03              | n/a                          | ?landscape portrait?                                        |
+| Unknown    | 'L0' 03               | n/a                          | Line type?[fn:7]                                            |
+| Unknown    | 'TB50,0' 03           | n/a                          | Unknown                                                     |
+| Unknown    | 'TG1' 03              | n/a                          | Unknown                                                     |
+|            | 'FE' a ',' n 03       | n/a                          | Handling of sharp angles.  a=1 - lift head at sharp angles. |
+
+|            |                     |                             | Cameo 3                                     |
+| 1b 04      |                     | initialize plotter          | n/a                                         |
+| 1b 05      |                     | status request              | y                                           |
+|            | '0' 03              | ready                       | y                                           |
+|            | '1' 03              | moving                      | y                                           |
+|            | '2' 03              | empty tray                  | ?                                           |
+| 'TT' 03    |                     | home the cutter             | n/a                                         |
+| 'FG' 03    | 'CAMEO V1.10   ' 03 | query version               | y                                           |
+| 'FW' %d 03 |                     | media 100 - 138, 300        | n/a                                         |
+| '!' %d 03  |                     | speed 1-10                  | y                                           |
+| 'FX' %d 03 |                     | pressure 1..33              | y                                           |
+| 'FC' %d 03 |                     | offset: 18 = blade, 0 = pen | y                                           |
+| 'FY' %d 03 |                     | track enhancing on/off      | Always 'on'.                                |
+| 'FN' %d 03 |                     | 1=landscape, 0=portrait     | Always 0, but then I never tried landscape. |
+| 'FE0' 03   |                     |                             |                                             |
+
+* Units
+
+| um | micrometer      |                                                 |
+| SU | Silhouette Unit | All command coordinates are in Silhouette Units |
+| in | Inches          |                                                 |
+
+#+BEGIN_SRC
+ 50   um =    1 SU
+508   SU =    1 in
+  8.5 in = 4318 SU
+ 11   in = 5588 SU
+#+END_SRC
+
+* Examples
+
+All of the examples are using US Letter size paper (8.5 x 11 in OR 4318 x 5588 SU).
+
+All command strings end with ETX (0x03) unless otherwise specified.
+
+| Occurance | Meaning                                                                                                                |
+|-----------+------------------------------------------------------------------------------------------------------------------------|
+| Not First | This command does not appear on the first such sequence, but does appear on all subsequent sequences of the same type. |
+| All       | This command appears on all squences of this type.                                                                     |
+| First     | This command appears only on the first such sequence, and is absent from all subsequent sequences of the same type.    |
+
+** Initialization (US Letter, Portrait)
+
+| TG1        | Unknown                                                                           |
+| FN0        | Unknown                                                                           |
+| TB50,0     | Portrait Mode (0)  Landscape Mode (1)
+| \30,30     | Write Upper Left - Sets the upper left to 1.5 mm from the true upper left corner. |
+| Z5558,4288 | Write Lower Right - Sets the lowr right 1.5mm from the true lower right.          |
+
+** Initialize Autoblade In Tool 1
+
+Since an autoblade can only ever be in tool slot one, all pen numbers are always one.
+
+| Command  | Occurance | Meaning/Notes                                  |
+|----------+-----------+------------------------------------------------|
+| L0       | Not First | Unknown[fn:8]                                  |
+| J1       | All       | Pen Select                                     |
+| FX33,1   | All       | Set pen one force to 33.                       |
+| !5,1     | All       | Set pen one speed to 5.                        |
+| FC0,1,1  | First     | Set pen one cutter offset to 0,1.              |
+| FC18,1,1 | Not First | Set pen one cutter offset to 18,1.             |
+| FE0,1    | All       | Unknown                                        |
+| FF1,0,1  | First     | Only on first autoblade initalization: Unknown |
+| FF1,1,1  | All       | On all autoblade initialization: Unknown       |
+| FC18,1,1 | All       | Set pen one cutter offset to 0.9mm x 50 um.    |
+| FY1      | All       | Reset Blade to depth 10[fn:9].                 |
+| TF1,1    | All       | Set pen one to depth 1[fn:10].                 |
+
+The initialization sequence is followed by a 'M' (move) command, then
+by a 'BE[12]' command sequence that supposedly does the cutting.
+
+** Initialize Ratchet Blade in Tool 2
+
+This initialization sequence was after 6 autoblade initialization
+sequences.
+
+TODO Run a capture of only ratchet blade initializations.
+
+| L0       | Unknown[fn:8]                              |
+| J2       | Pen Select.                                 |
+| !4,2     | Set pen two speed to 4.[fn:11]              |
+| FX20,2   | Set pen two force to 20.                    |
+| FE0,2    | Unknown                                     |
+| FF1,0,2  | Unknown                                     |
+| FF1,1,2  | Unknown                                     |
+| FC0,1,2  | Set pen two cutter offset to 0.0mm x 50 um. |
+| FC18,1,2 | Set pen two cutter offset to 0.9mm x 50 um. |
+
+As with the autoblade, the initialization sequence is followed by an
+'M' (move) command, then by a 'BE[12]' command sequence that
+supposedly does the cutting.
+
+** End Sequence
+
+| L0     | Unknown[fn:8]                                                                   |
+| \0,0   | Write Upper Left : reset the upper left to zero,zero so that you can move to it. |
+| M0,0   | Move to zero zero.                                                               |
+| J0     | Select no pen.                                                                   |
+| FN0    | Unknown                                                                          |
+| TB50,0 | Unknown                                                                          |
+
+** Status (Ready)
+
+Normal exchange when the device is ready.
+
+| 0x1b 0x05 |           | Query Status |
+|           | 0x30 0x03 | Ready        |
+
+** Status (Moving)
+
+Normal exchange when the device is executing the last command set given.
+
+| 0x1b 0x05 |           | Query Status |
+|           | 0x31 0x03 | Moving       |
+
+** Status (Pause)
+
+The Pause button has been pushed on the device, hold all subsequent commands.
+
+I believe that the device completes the last set of commands sent
+before it acts on the pause button.
+
+| 0x1b 0x05 |           | Query Status |
+|           | 0x33 0x03 | Paused       |
+
+** Status (Cancel)
+
+The cancel button has been pushed on the device.  Since the cancel
+button is only available if the device has been paused, this triggers
+an immediate reset sequence followed by a sequence that resembles the
+normal startup sequence; but which contains ... errors ...  For
+example, the upper left coordinates are reported as 0,0 but the lower
+right coordinates are reported as less than a US Letter portrait
+oriented page.
+
+** Startup Sequence From Power Up
+
+
+
+| 0x1b 0x05 |           | Query Status |
+|           | 0x34 0x03 | Cancel       |
+
+* Footnotes
+
+[fn:3] The original documentation does not mention any return value
+from this command.
+
+[fn:91] On Cameo 1, and presumably other devices that have only one
+pen slot, the pen number (",\nbsp{}n") is omitted.
+
+[fn:1] If there are three characters, the format is no padding.  If
+there are more than three characters, then the format is fixed width,
+padded on the left with blanks.
+
+[fn:2] These new commands use nothing but binary to express the
+drawing/cutting desired.  I have, as yet, been unable to decypher
+them.  The old drawing commands appear to still work, so it's not
+essential that these be decyphered.
+
+[fn:4] The CAMEO 3 moves the selected pen to a special spot (A) in the
+machine, clicks it 10 times, then moves to a second special spot (B)
+and clicks once.  I believe that this resets the Auto Blade to 1.  The
+CAMEO 3 then moves the selected pen back to special spot (A) and
+clicks it 10 - N times, where N is the first number in the command.
+
+[fn:5] The response seems to always be 0,0.
+
+[fn:6] Observed on Cameo 3, 0=no pen, 1=first pen, 2=second pen.
+
+[fn:7] Older documentation claims that this is line type.  I don't
+think that's what it means for Cameo 3.  Unless "line type" means
+something other than what you draw with a pen.  Cameo 3 does dashed
+lines by sending pairs of move and draw commands.
+
+[fn:8] This is absent on the first initialization of the autoblade,
+but present on all subsequent blade initializations, including the
+ratchet blade.
+
+[fn:9] The Cameo 3 always does ten clicks with an autoblade in one
+position, followed by another click in a different position.  This
+resets the blade to 10.
+
+[fn:10] After resetting the autoblade, the Cameo 3 always does 10 - N
+clicks to set the depth to N.  This means the reset must guarantee
+that the autoblade is set to 10, since each subsequent click reduces
+the depth by one.
+
+[fn:11] Note that speed and force are reversed compared to autoblade.
+
+[fn:12] This cutter offset is strange.  On the first autoblade
+initialization, it's set to zero.  On all subsequent initializations
+it is 18.
+
+* New Test Plan                                                        :SKIP:
+
+- Include Registration Marks
+
+- Each figure is a single one inch square.
+
+- On centers, each square is 1.25 inches from any other square.
+
+- There are six squares in each row across a US Letter Portrait page.
+
+- There are 8 rows, the last three are not yet used.
+
+- Capture *must* start before the software starts.  We want the full
+  capture from device discovery to actions.
+
+** Questions
+
+- Variations in standard pattern?
+
+- Handling of Pause?
+
+- Registration Marks?
+
+
+| Pen | Action | Blade     | Repeat | Depth | Speed | Force | Passes | Color       |                      |
+|-----+--------+-----------+--------+-------+-------+-------+--------+-------------+----------------------|
+|   1 | Sketch | Pen       |      3 |   n/a |    10 |    18 |      1 | 255,0,0     | Draw three squares.  |
+|   2 | Sketch | Pen       |      3 |   n/a |    10 |    18 |      1 | 128,70,34   | Draw three squares.  |
+|   P | Pause  |           |        |       |       |       |        |             |                      |
+|   2 | Score  | Ratchet   |      3 |     2 |     4 |    15 |      1 | 244,102,0   | Score three squares. |
+|   1 | Score  | Ratchet   |      3 |     2 |     4 |    15 |      1 | 255,175,5   | Score three squares. |
+|   P | Pause  |           |        |       |       |       |        |             |                      |
+|   1 | Cut    | Ratchet   |      3 |     3 |     4 |    20 |      1 | 178,171,0   | Cut three squares.   |
+|   2 | Cut    | Ratchet   |      3 |     3 |     4 |    20 |      1 | 143,193,0   | Cut three squares.   |
+|   P | Pause  |           |        |       |       |       |        |             |                      |
+|   2 | Cut    | Ratchet   |      3 |     3 |     4 |    20 |      1 | 63,198,0    | Cut three squares.   |
+|   1 | Cut    | Autoblade |      3 |     3 |     4 |    20 |      1 | 0,239,123   | Using Auto Blade.    |
+|   P | Pause  |           |        |       |       |       |        |             |                      |
+|   1 | Cut    | Autoblade |      1 |     1 |     5 |    33 |      1 | 255,204,204 | Cut one square.      |
+|   2 | Cut    | Ratchet   |      1 |     4 |     5 |    15 |      1 | 228,221,183 | Cut one square.      |
+|   P | Pause  |           |        |       |       |       |        |             |                      |
+|   1 | Cut    | Autoblade |      1 |     2 |     5 |    25 |      1 | 255,178,122 | Cut one square.      |
+|   2 | Cut    | Ratchet   |      1 |     5 |     5 |    10 |      1 | 255,235,198 | Cut one square.      |
+|   1 | Cut    | Autoblade |      1 |     3 |     5 |    20 |      1 | 255,245,5   | Cut one square.      |
+|   2 | Cut    | Ratchet   |      1 |     6 |     5 |     5 |      1 | 177,239,0   | Cut one square.      |
