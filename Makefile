@@ -1,6 +1,6 @@
 # a simple makefile to pull a tar ball.
 
-PREFIX?=/usr
+PREFIX?=/usr/local
 DISTNAME=inkscape-silhouette
 EXCL=--exclude \*.orig --exclude \*.pyc
 ALL=README.md *.png *.sh *.rules *.py *.inx examples misc silhouette
