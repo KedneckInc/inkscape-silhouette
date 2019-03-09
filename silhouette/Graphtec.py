@@ -26,92 +26,17 @@ import re
 import sys
 import time
 
+from silhouette.OSIsolation import OSIsolation
+from silhouette.media import Media
+
 usb_reset_needed = False  # https://github.com/fablabnbg/inkscape-silhouette/issues/10
 
-sys_platform = sys.platform.lower()
-if sys_platform.startswith('win'):
-  import usb.core
-elif sys_platform.startswith('darwin'):
-  import usb1, usb.core
-  usb1ctx = usb1.USBContext()
-else:   # if sys_platform.startswith('linux'):
-  try:
-    import usb.core  # where???
-  except Exception as e:
-      try:
-          import libusb1 as usb
-      except Exception as e1:
-        try:
-          import usb
-        except Exception as e2:
-          print("The python usb module could not be found. Try", file=sys.stderr)
-          print("\t sudo zypper in python-usb \t\t# if you run SUSE", file=sys.stderr)
-          print("\t sudo apt-get install python-usb   \t\t# if you run Ubuntu", file=sys.stderr)
-          print("\n\n\n", file=sys.stderr)
-          raise e2;
-
-try:
-    try:
-      usb_vi = usb.version_info[0]
-      usb_vi_str = str(usb.version_info)
-    except AttributeError:
-      usb_vi = 0
-      if sys_platform.startswith('win'):
-        usb_vi = 1
-        pass # windows does not seem to detect the usb.version , gives attribute error. Other tests of pyusb work, pyusb is installed.
-      usb_vi_str = 'unknown'
-
-
-    if usb_vi < 1:
-      print("Your python usb module appears to be "+usb_vi_str+" -- We need version 1.x", file=sys.stderr)
-      print("For Debian 8 try:\n  echo > /etc/apt/sources.list.d/backports.list 'deb http://ftp.debian.org debian jessie-backports main\n  apt-get update\n  apt-get -t jessie-backports install python-usb", file=sys.stderr)
-      print("\n\n\n", file=sys.stderr)
-      print("For Ubuntu 14.04try:\n  pip install pyusb --upgrade", file=sys.stderr)
-      print("\n\n\n", file=sys.stderr)
-      sys.exit(1)
-      sys.exit(1)
-      # try my own wrapper instead.
-      # import UsbCoreMini as usb
-      # forget this. old 0.4 PyUSB segfaults easily.
-except NameError:
-    pass #on OS X usb.version_info[0] will always fail as libusb1 is being used
-
+os_isolation = OSIsolation();
+MEDIA = Media()
 
 # taken from
 #  robocut/CutDialog.ui
 #  robocut/CutDialog.cpp
-
-MEDIA = [
-# CAUTION: keep in sync with sendto_silhouette.inx
-# media, pressure, speed, cap-color, name
-  ( 100,   27,     10,  "yellow", "Card without Craft Paper Backing"),
-  ( 101,   27,     10,  "yellow", "Card with Craft Paper Backing"),
-  ( 102,   10,     10,  "blue",   "Vinyl Sticker"),
-  ( 106,   14,     10,  "blue",   "Film Labels"),
-  ( 111,   27,     10,  "yellow", "Thick Media"),
-  ( 112,    2,     10,  "blue",   "Thin Media"),
-  ( 113,   10,     10,  "pen",    "Pen"),
-  ( 120,   30,     10,  "blue",   "Bond Paper 13-28 lbs (105g)"),
-  ( 121,   30,     10,  "yellow", "Bristol Paper 57-67 lbs (145g)"),
-  ( 122,   30,     10,  "yellow", "Cardstock 40-60 lbs (90g)"),
-  ( 123,   30,     10,  "yellow", "Cover 40-60 lbs (170g)"),
-  ( 124,    1,     10,  "blue",   "Film, Double Matte Translucent"),
-  ( 125,    1,     10,  "blue",   "Film, Vinyl With Adhesive Back"),
-  ( 126,    1,     10,  "blue",   "Film, Window With Kling Adhesive"),
-  ( 127,   30,     10,  "red",    "Index 90 lbs (165g)"),
-  ( 128,   20,     10,  "yellow", "Inkjet Photo Paper 28-44 lbs (70g)"),
-  ( 129,   27,     10,  "red",    "Inkjet Photo Paper 45-75 lbs (110g)"),
-  ( 130,   30,      3,  "red",    "Magnetic Sheet"),
-  ( 131,   30,     10,  "blue",   "Offset 24-60 lbs (90g)"),
-  ( 132,    5,     10,  "blue",   "Print Paper Light Weight"),
-  ( 133,   25,     10,  "yellow", "Print Paper Medium Weight"),
-  ( 134,   20,     10,  "blue",   "Sticker Sheet"),
-  ( 135,   20,     10,  "red",    "Tag 100 lbs (275g)"),
-  ( 136,   30,     10,  "blue",   "Text Paper 24-70 lbs (105g)"),
-  ( 137,   30,     10,  "yellow", "Vellum Bristol 57-67 lbs (145g)"),
-  ( 138,   30,     10,  "blue",   "Writing Paper 24-70 lbs (105g)"),
-  ( 300, None,   None,  "custom", "Custom"),
-]
 
 #  robocut/Plotter.h:53 ff
 VENDOR_ID_GRAPHTEC = 0x0b4d
@@ -123,20 +48,14 @@ PRODUCT_ID_SILHOUETTE_CAMEO =  0x1121
 PRODUCT_ID_SILHOUETTE_PORTRAIT = 0x1123
 
 DEVICE = [
- { 'vendor_id': 0x0b4d, 'product_id': 0x1123, 'name': 'Silhouette Portrait',
-   'width_mm':  206, 'length_mm': 3000, 'regmark': True },
- { 'vendor_id': 0x0b4d, 'product_id': 0x1132, 'name': 'Silhouette Portrait2',
-   'width_mm':  203, 'length_mm': 3000, 'regmark': True },
- { 'vendor_id': 0x0b4d, 'product_id': 0x1121, 'name': 'Silhouette Cameo',
-   # margin_top_mm is just for safety when moving backwards with thin media
-   # margin_left_mm is a physical limit, but is relative to width_mm!
-   'width_mm':  304, 'length_mm': 3000, 'margin_left_mm':9.0, 'margin_top_mm':1.0, 'regmark': True },
- { 'vendor_id': 0x0b4d, 'product_id': 0x112b, 'name': 'Silhouette Cameo2',
-   'width_mm':  304, 'length_mm': 3000, 'margin_left_mm':9.0, 'margin_top_mm':1.0, 'regmark': True },
- { 'vendor_id': 0x0b4d, 'product_id': 0x112f, 'name': 'Silhouette Cameo3',
-   'width_mm':  304, 'length_mm': 3000, 'margin_left_mm':5, 'margin_top_mm':15.5, 'regmark': True },
- { 'vendor_id': 0x0b4d, 'product_id': 0x110a, 'name': 'Craft Robo CC200-20',
-   'width_mm':  200, 'length_mm': 1000, 'regmark': True },
+ { 'vendor_id': 0x0b4d, 'product_id': 0x1123, 'name': 'Silhouette Portrait',  'width_mm':  206, 'length_mm': 3000, 'regmark': True },
+ { 'vendor_id': 0x0b4d, 'product_id': 0x1132, 'name': 'Silhouette Portrait2', 'width_mm':  203, 'length_mm': 3000, 'regmark': True },
+    # margin_top_mm is just for safety when moving backwards with thin media
+    # margin_left_mm is a physical limit, but is relative to width_mm!
+ { 'vendor_id': 0x0b4d, 'product_id': 0x1121, 'name': 'Silhouette Cameo',     'width_mm':  304, 'length_mm': 3000, 'regmark': True, 'margin_left_mm':9.0, 'margin_top_mm':1.0 },
+ { 'vendor_id': 0x0b4d, 'product_id': 0x112b, 'name': 'Silhouette Cameo2',    'width_mm':  304, 'length_mm': 3000, 'regmark': True, 'margin_left_mm':9.0, 'margin_top_mm':1.0 },
+ { 'vendor_id': 0x0b4d, 'product_id': 0x112f, 'name': 'Silhouette Cameo3',    'width_mm':  304, 'length_mm': 3000, 'regmark': True, 'margin_left_mm':5,   'margin_top_mm':15.5 },
+ { 'vendor_id': 0x0b4d, 'product_id': 0x110a, 'name': 'Craft Robo CC200-20',  'width_mm':  200, 'length_mm': 1000, 'regmark': True },
  { 'vendor_id': 0x0b4d, 'product_id': 0x111a, 'name': 'Craft Robo CC300-20' },
  { 'vendor_id': 0x0b4d, 'product_id': 0x111c, 'name': 'Silhouette SD 1' },
  { 'vendor_id': 0x0b4d, 'product_id': 0x111d, 'name': 'Silhouette SD 2' },
@@ -801,8 +720,10 @@ Alternatively, you can add yourself to group 'lp' and logout/login.""" % (self.h
     height = int(0.5+20.*mediaheight)
     top    = int(0.5+20.*margintop)
     left   = int(0.5+20.*marginleft)
+    print ("1 W=%i, H=%i, T=%i, L=%i" % (width, height, top, left), file=s.log);
     if width < left: width  = left
     if height < top: height = top
+    print ("2 W=%i, H=%i, T=%i, L=%i" % (width, height, top, left), file=s.log);
 
     x_off = left
     y_off = top
@@ -812,15 +733,18 @@ Alternatively, you can add yourself to group 'lp' and logout/login.""" % (self.h
       if type(offset) != type([]) and type(offset) != type(()):
         offset = (offset, 0)
 
+    print("3 Ox=%i, Oy=%i" % offset, file=s.log);
+
     if regmark:
       # after registration logically (0,0) is at regmark position
       # compensate the offset of the regmark to the svg document origin.
-      #bb = s.find_bbox(pathlist)
-      #print("bb llx=%g ury=%g" % (bb['llx'], bb['ury']), file=s.log)
+      # bb = s.find_bbox(pathlist)
+      # print("bb llx=%g ury=%g" % (bb['llx'], bb['ury']), file=s.log)
       #regoriginx = bb['llx']
       #regoriginy = bb['ury']
       print("bb regoriginx=%g regoriginy=%g" % (regoriginx, regoriginy), file=s.log)
-      offset = (offset[0] - regoriginx, offset[1] - regoriginy)
+      offset = (offset[0] + regoriginx, offset[1] + regoriginy)
+      print("bb offset=%g,%g" % offset, file=s.log)
 
       # Limit the cutting area inside cutting marks
       height = reglength * 20.0
@@ -836,9 +760,15 @@ Alternatively, you can add yourself to group 'lp' and logout/login.""" % (self.h
       if regsearch:
         # automatic regmark test, height, width, top, left
         # add a search range of 10mm
-        s.write("TB123,%i,%i,%i,%i\x03" % (reglength * 20.0, regwidth * 20.0, (regoriginy - 10)  * 20.0, (regoriginx - 10) * 20.0))
+        values = (reglength * 20.0,
+                  regwidth  * 20.0,
+                  (regoriginy - 10) * 20.0,
+                  (regoriginx - 10) * 20.0)
+        print("regsearch rlen=%i,rwide=%i,rox=%i,roy=%i" %  values, file=s.log)
+        s.write("TB123,%i,%i,%i,%i\x03" % values)
       else:
         # manual regmark, height, width
+        print("regmanual rlen=%i,rwide=%i" %  (reglength * 20.0, regwidth * 20.0), file=s.log)
         s.write("TB23,%i,%i\x03" % (reglength * 20.0, regwidth * 20.0))
 
       #while True:
