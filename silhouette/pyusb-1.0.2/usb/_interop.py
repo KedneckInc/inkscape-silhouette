@@ -50,7 +50,7 @@ except (ImportError, AttributeError):
 try:
     _all = all
 except NameError:
-    _all = lambda iter_ : _reduce( lambda x, y: x and y, iter_, True )
+    def _all(iter_): return _reduce(lambda x, y: x and y, iter_, True)
 
 # we only have the builtin set type since 2.5 version
 try:
@@ -61,11 +61,14 @@ except NameError:
 
 # On Python >= 2.6, we have the builtin next() function
 # On Python 2.5 and before, we have to call the iterator method next()
+
+
 def _next(iter):
     try:
         return next(iter)
     except NameError:
         return iter.next()
+
 
 # functools appeared in 2.5
 try:
@@ -81,6 +84,8 @@ except (ImportError, AttributeError):
 # this is used (as of May 2015) twice in core, once in backend/openusb, and in
 # some unit test code. It would probably be clearer if written in terms of some
 # definite 3.2+ API (bytearrays?) with a fallback provided for 2.4+.
+
+
 def as_array(data=None):
     if data is None:
         return array.array('B')
@@ -94,5 +99,5 @@ def as_array(data=None):
         # When you pass a unicode string or a character sequence,
         # you get a TypeError if the first parameter does not match
         a = array.array('B')
-        a.fromstring(data) # deprecated since 3.2
+        a.fromstring(data)  # deprecated since 3.2
         return a

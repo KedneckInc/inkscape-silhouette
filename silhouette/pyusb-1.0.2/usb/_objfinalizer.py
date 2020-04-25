@@ -66,7 +66,7 @@ class _AutoFinalizedObjectBase(object):
 
         Returns: None
         """
-        if not self._finalize_called: # race-free?
+        if not self._finalize_called:  # race-free?
             self._finalize_called = True
             self._finalize_object()
 
@@ -102,7 +102,6 @@ if sys.hexversion >= 0x3040000:
         if obj is not None:
             # else object disappeared
             obj._do_finalize_object()
-
 
     class AutoFinalizedObject(_AutoFinalizedObjectBase):
 

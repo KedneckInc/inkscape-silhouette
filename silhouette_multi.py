@@ -34,7 +34,6 @@ small_down_arrow = PyEmbeddedImage(
     "bcPlKrwugGnCFy6Mo3mBAQChDgRlP4RC7wAAAABJRU5ErkJggg==")
 
 
-
 def presets_path():
     try:
         import appdirs
@@ -46,6 +45,7 @@ def presets_path():
         os.makedirs(config_path)
     return os.path.join(config_path, 'presets.cPickle')
 
+
 def load_presets():
     try:
         with open(presets_path(), 'r') as presets:
@@ -54,8 +54,9 @@ def load_presets():
     except:
         return {}
 
+
 def save_presets(presets):
-    #print "saving presets", presets
+    # print "saving presets", presets
     with open(presets_path(), 'w') as presets_file:
         cPickle.dump(presets, presets_file)
 
@@ -76,15 +77,17 @@ def delete_preset(name):
     save_presets(presets)
 
 
-def confirm_dialog(parent, question, caption = 'Silhouette Multiple Actions'):
-    dlg = wx.MessageDialog(parent, question, caption, wx.YES_NO | wx.ICON_QUESTION)
+def confirm_dialog(parent, question, caption='Silhouette Multiple Actions'):
+    dlg = wx.MessageDialog(parent, question, caption,
+                           wx.YES_NO | wx.ICON_QUESTION)
     result = dlg.ShowModal() == wx.ID_YES
     dlg.Destroy()
     return result
 
 
-def info_dialog(parent, message, caption = 'Silhouette Multiple Actions'):
-    dlg = wx.MessageDialog(parent, message, caption, wx.OK | wx.ICON_INFORMATION)
+def info_dialog(parent, message, caption='Silhouette Multiple Actions'):
+    dlg = wx.MessageDialog(parent, message, caption,
+                           wx.OK | wx.ICON_INFORMATION)
     dlg.ShowModal()
     dlg.Destroy()
 
@@ -115,7 +118,8 @@ class ParamsNotebook(wx.Notebook):
 
         self.tabs = []
         for page in self.notebook['page']:
-            self.tabs.append(ParamsTab(self, wx.ID_ANY, name=page['@name'], title=page['@_gui-text'], params=page['param']))
+            self.tabs.append(ParamsTab(
+                self, wx.ID_ANY, name=page['@name'], title=page['@_gui-text'], params=page['param']))
 
     def add_tabs(self):
         for tab in self.tabs:
@@ -137,15 +141,14 @@ class ParamsNotebook(wx.Notebook):
 
         return values
 
-
     def set_values(self, values):
         for tab in self.tabs:
             tab.set_values(values)
 
-
     def set_defaults(self):
         for tab in self.tabs:
             tab.set_defaults()
+
 
 class ParamsTab(ScrolledPanel):
     def __init__(self, *args, **kwargs):
@@ -178,7 +181,8 @@ class ParamsTab(ScrolledPanel):
                 if choice == wx.NOT_FOUND:
                     values[name] = None
                 else:
-                    values[name] = self.choices_by_label[name][input.GetString(choice)]
+                    values[name] = self.choices_by_label[name][input.GetString(
+                        choice)]
             else:
                 values[name] = input.GetValue()
         return values
@@ -220,22 +224,27 @@ class ParamsTab(ScrolledPanel):
             param_name = param['@name']
             if param_type == 'description':
                 self.settings_grid.Add(wx.StaticText(self, label=param.get('#text', '')),
-                                       pos=(row, 0), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.ALIGN_TOP, border=10)
+                                       pos=(row, 0), span=(1, 2), flag=wx.EXPAND | wx.LEFT | wx.ALIGN_TOP, border=10)
             else:
                 self.settings_grid.Add(wx.StaticText(self, label=param.get('@_gui-text', '')),
-                                       pos=(row, 0), flag=wx.EXPAND|wx.TOP|wx.ALIGN_TOP, border=5)
+                                       pos=(row, 0), flag=wx.EXPAND | wx.TOP | wx.ALIGN_TOP, border=5)
 
                 if param_type == 'boolean':
                     input = wx.CheckBox(self)
                 elif param_type == 'float':
-                    input = wx.SpinCtrlDouble(self, wx.ID_ANY, min=float(param.get('@min', 0.0)), max=float(param.get('@max', 2.0**32)), inc=0.1, value=param.get('#text', ''))
+                    input = wx.SpinCtrlDouble(self, wx.ID_ANY, min=float(param.get('@min', 0.0)), max=float(
+                        param.get('@max', 2.0**32)), inc=0.1, value=param.get('#text', ''))
                 elif param_type == 'int':
-                    input = wx.SpinCtrl(self, wx.ID_ANY, min=int(param.get('@min', 0)), max=int(param.get('@max', 2**32)), value=param.get('#text', ''))
+                    input = wx.SpinCtrl(self, wx.ID_ANY, min=int(param.get('@min', 0)), max=int(
+                        param.get('@max', 2**32)), value=param.get('#text', ''))
                 elif param_type == 'enum':
-                    choices = OrderedDict((item['#text'], item['@value']) for item in param['item'])
+                    choices = OrderedDict(
+                        (item['#text'], item['@value']) for item in param['item'])
                     self.choices_by_label[param_name] = choices
-                    self.choices_by_value[param_name] = { v: k for k, v in choices.iteritems() }
-                    input = wx.Choice(self, wx.ID_ANY, choices=choices.keys(), style=wx.LB_SINGLE)
+                    self.choices_by_value[param_name] = {
+                        v: k for k, v in choices.iteritems()}
+                    input = wx.Choice(
+                        self, wx.ID_ANY, choices=choices.keys(), style=wx.LB_SINGLE)
                     input.SetStringSelection(choices.keys()[0])
                 else:
                     # not sure what else to do here...
@@ -243,7 +252,8 @@ class ParamsTab(ScrolledPanel):
 
                 self.param_inputs[param_name] = input
 
-                self.settings_grid.Add(input, pos=(row, 1), flag=wx.ALIGN_BOTTOM|wx.TOP, border=5)
+                self.settings_grid.Add(input, pos=(
+                    row, 1), flag=wx.ALIGN_BOTTOM | wx.TOP, border=5)
 
         self.defaults = self.get_values()
 
@@ -259,7 +269,7 @@ class SilhouetteMultiFrame(wx.Frame):
         self.colors = kwargs.pop('colors', [])
         self.options = kwargs.pop('options')
         self.run_callback = kwargs.pop('run_callback')
-        wx.Frame.__init__(self, None, wx.ID_ANY, 
+        wx.Frame.__init__(self, None, wx.ID_ANY,
                           "Silhouette Multi-Action"
                           )
 
@@ -274,9 +284,11 @@ class SilhouetteMultiFrame(wx.Frame):
 
         self.presets_box = wx.StaticBox(self, wx.ID_ANY, label="Presets")
         self.preset_chooser = wx.ComboBox(self, wx.ID_ANY, style=wx.CB_SORT)
-        self.load_preset_button = wx.Button(self, wx.ID_REVERT_TO_SAVED, "Load")
+        self.load_preset_button = wx.Button(
+            self, wx.ID_REVERT_TO_SAVED, "Load")
         self.add_preset_button = wx.Button(self, wx.ID_SAVE, "Add")
-        self.overwrite_preset_button = wx.Button(self, wx.ID_SAVEAS, "Overwrite")
+        self.overwrite_preset_button = wx.Button(
+            self, wx.ID_SAVEAS, "Overwrite")
         self.delete_preset_button = wx.Button(self, wx.ID_DELETE, "Delete")
 
         self.update_preset_list()
@@ -287,7 +299,8 @@ class SilhouetteMultiFrame(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.run, self.run_button)
         self.Bind(wx.EVT_BUTTON, self.load_preset, self.load_preset_button)
         self.Bind(wx.EVT_BUTTON, self.add_preset, self.add_preset_button)
-        self.Bind(wx.EVT_BUTTON, self.overwrite_preset, self.overwrite_preset_button)
+        self.Bind(wx.EVT_BUTTON, self.overwrite_preset,
+                  self.overwrite_preset_button)
         self.Bind(wx.EVT_BUTTON, self.delete_preset, self.delete_preset_button)
         self.Bind(wx.EVT_BUTTON, self.close, self.cancel_button)
 
@@ -313,7 +326,8 @@ class SilhouetteMultiFrame(wx.Frame):
             return
 
         if not overwrite and load_preset(preset_name):
-            info_dialog(self, 'Preset "%s" already exists.  Please use another name or press "Overwrite"' % preset_name, caption='Preset')
+            info_dialog(self, 'Preset "%s" already exists.  Please use another name or press "Overwrite"' %
+                        preset_name, caption='Preset')
 
         self.save_color_settings()
         save_preset(preset_name, self.get_preset_data())
@@ -342,7 +356,8 @@ class SilhouetteMultiFrame(wx.Frame):
     def check_and_load_preset(self, preset_name):
         preset = load_preset(preset_name)
         if not preset:
-            info_dialog(self, 'Preset "%s" not found.' % preset_name, caption='Preset')
+            info_dialog(self, 'Preset "%s" not found.' %
+                        preset_name, caption='Preset')
 
         return preset
 
@@ -351,12 +366,14 @@ class SilhouetteMultiFrame(wx.Frame):
         if preset_name:
             return preset_name
         else:
-            info_dialog(self, "Please enter or select a preset name first.", caption='Preset')
+            info_dialog(
+                self, "Please enter or select a preset name first.", caption='Preset')
             return
 
     def update_preset_list(self):
         preset_names = load_presets().keys()
-        preset_names = [preset for preset in preset_names if not preset.startswith("__")]
+        preset_names = [
+            preset for preset in preset_names if not preset.startswith("__")]
         self.preset_chooser.SetItems(preset_names)
 
     def _load_preset(self, preset_name, silent=False):
@@ -378,8 +395,10 @@ class SilhouetteMultiFrame(wx.Frame):
             if color in old_colors:
                 old_colors.remove(color)
                 self.colors.append(color)
-                self.color_enabled[color] = preset['color_enabled'].get(color, True)
-                self.color_settings[color] = preset['color_settings'].get(color, {})
+                self.color_enabled[color] = preset['color_enabled'].get(
+                    color, True)
+                self.color_settings[color] = preset['color_settings'].get(
+                    color, {})
             else:
                 extra_colors.append(color)
 
@@ -394,8 +413,10 @@ class SilhouetteMultiFrame(wx.Frame):
             if extra_colors:
                 reassigned += 1
                 assigned_color = extra_colors.pop(0)
-                self.color_enabled[color] = preset['color_enabled'].get(assigned_color, True)
-                self.color_settings[color] = preset['color_settings'].get(assigned_color, {})
+                self.color_enabled[color] = preset['color_enabled'].get(
+                    assigned_color, True)
+                self.color_settings[color] = preset['color_settings'].get(
+                    assigned_color, {})
             else:
                 self.color_enabled[color] = False
 
@@ -409,10 +430,12 @@ class SilhouetteMultiFrame(wx.Frame):
             message.append("%d colors were reassigned." % reassigned)
 
         if extra_colors:
-            message.append("%d colors from the preset were not used." % len(extra_colors))
+            message.append(
+                "%d colors from the preset were not used." % len(extra_colors))
 
         if message and not silent:
-            info_dialog(self, "Colors in the preset and this SVG did not match fully. " + " ".join(message))
+            info_dialog(
+                self, "Colors in the preset and this SVG did not match fully. " + " ".join(message))
 
         self.refresh_actions()
 
@@ -423,9 +446,9 @@ class SilhouetteMultiFrame(wx.Frame):
         save_preset(preset_name, preset)
 
     def get_preset_data(self):
-        return { 'colors': self.colors,
-                 'color_enabled': self.color_enabled,
-                 'color_settings': self.color_settings }
+        return {'colors': self.colors,
+                'color_enabled': self.color_enabled,
+                'color_settings': self.color_settings}
 
     def run(self, event):
         self.save_color_settings()
@@ -434,14 +457,16 @@ class SilhouetteMultiFrame(wx.Frame):
 
         for color in self.colors:
             if self.color_enabled.get(color, True):
-                actions.append((color, self.color_settings.get(color) or self.notebook.get_defaults()))
+                actions.append((color, self.color_settings.get(
+                    color) or self.notebook.get_defaults()))
 
         if actions:
             if not self.options.dry_run:
                 if not confirm_dialog(self, "About to perform %d actions, continue?" % len(actions)):
                     return
         else:
-            info_dialog(self, "No colors were enabled, so no actions can be performed.")
+            info_dialog(
+                self, "No colors were enabled, so no actions can be performed.")
             return
 
         self._save_preset('__LAST__')
@@ -504,7 +529,7 @@ class SilhouetteMultiFrame(wx.Frame):
             self.notebook.set_defaults()
 
     def save_color_settings(self):
-        #print "save:", self.selected
+        # print "save:", self.selected
 
         if self.selected is None:
             return
@@ -513,7 +538,7 @@ class SilhouetteMultiFrame(wx.Frame):
         settings = self.notebook.get_values()
         self.color_settings[color] = settings
 
-        #print "settings:", settings
+        # print "settings:", settings
 
     def item_checked(self, event):
         item = event.m_itemIndex
@@ -521,10 +546,13 @@ class SilhouetteMultiFrame(wx.Frame):
         self.color_enabled[self.colors[item]] = checked
 
     def init_actions(self):
-        self.actions = ulc.UltimateListCtrl(self, size=(300, 150), agwStyle=wx.LC_REPORT|ulc.ULC_HRULES|ulc.ULC_SINGLE_SEL)
+        self.actions = ulc.UltimateListCtrl(self, size=(
+            300, 150), agwStyle=wx.LC_REPORT | ulc.ULC_HRULES | ulc.ULC_SINGLE_SEL)
 
-        self.Bind(ulc.EVT_LIST_ITEM_SELECTED, self.action_selected, self.actions)
-        self.Bind(ulc.EVT_LIST_ITEM_DESELECTED, self.action_deselected, self.actions)
+        self.Bind(ulc.EVT_LIST_ITEM_SELECTED,
+                  self.action_selected, self.actions)
+        self.Bind(ulc.EVT_LIST_ITEM_DESELECTED,
+                  self.action_deselected, self.actions)
         self.Bind(ulc.EVT_LIST_ITEM_CHECKED, self.item_checked, self.actions)
         self.action_deselected()
 
@@ -539,7 +567,7 @@ class SilhouetteMultiFrame(wx.Frame):
             self.actions.InsertStringItem(i, "%d." % (i + 1))
 
             item = self.actions.GetItem(i, 2)
-            item.SetKind(1) # "a checkbox-like item"
+            item.SetKind(1)  # "a checkbox-like item"
             item.SetMask(ulc.ULC_MASK_KIND)
             self.actions.SetItem(item)
 
@@ -557,7 +585,6 @@ class SilhouetteMultiFrame(wx.Frame):
             item.SetMask(ulc.ULC_MASK_CHECK)
             self.actions.SetItem(item)
 
-
     def __set_properties(self):
         # begin wxGlade: MyFrame.__set_properties
         self.SetTitle("Silhouette Multi-Action")
@@ -569,44 +596,53 @@ class SilhouetteMultiFrame(wx.Frame):
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
 
         sizer_2 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_2.Add(self.actions, 0, flag=wx.ALL|wx.EXPAND, border=10)
+        sizer_2.Add(self.actions, 0, flag=wx.ALL | wx.EXPAND, border=10)
 
         sizer_3 = wx.BoxSizer(wx.VERTICAL)
         sizer_3.Add(self.up_button, 0, border=10)
         sizer_3.Add(self.down_button, 0, border=10)
 
-        sizer_2.Add(sizer_3, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.LEFT, border=10)
+        sizer_2.Add(sizer_3, 0, flag=wx.ALIGN_CENTER_VERTICAL |
+                    wx.LEFT, border=10)
 
         sizer_4 = wx.StaticBoxSizer(self.presets_box, wx.VERTICAL)
-        sizer_4.Add(self.preset_chooser, 0, flag=wx.BOTTOM|wx.LEFT|wx.RIGHT|wx.TOP|wx.EXPAND, border=10)
+        sizer_4.Add(self.preset_chooser, 0, flag=wx.BOTTOM |
+                    wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND, border=10)
 
         sizer_5 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_5.Add(self.load_preset_button, 0, flag=wx.RIGHT|wx.LEFT|wx.BOTTOM, border=10)
+        sizer_5.Add(self.load_preset_button, 0, flag=wx.RIGHT |
+                    wx.LEFT | wx.BOTTOM, border=10)
         sizer_5.Add(self.add_preset_button, 0, flag=wx.RIGHT, border=10)
         sizer_5.Add(self.overwrite_preset_button, 0, flag=wx.RIGHT, border=10)
         sizer_5.Add(self.delete_preset_button, 0, flag=wx.RIGHT, border=10)
 
         sizer_4.Add(sizer_5, 0)
-        sizer_2.Add(sizer_4, 0, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=30)
+        sizer_2.Add(sizer_4, 0, flag=wx.LEFT |
+                    wx.ALIGN_CENTER_VERTICAL, border=30)
 
         sizer_6 = wx.BoxSizer(wx.VERTICAL)
-        sizer_6.Add(self.run_button, 0, flag=wx.ALIGN_RIGHT|wx.BOTTOM, border=10)
-        sizer_6.Add(self.cancel_button, 0, flag=wx.ALIGN_RIGHT|wx.EXPAND)
-        sizer_2.Add(sizer_6, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.LEFT, border=30) 
+        sizer_6.Add(self.run_button, 0, flag=wx.ALIGN_RIGHT |
+                    wx.BOTTOM, border=10)
+        sizer_6.Add(self.cancel_button, 0, flag=wx.ALIGN_RIGHT | wx.EXPAND)
+        sizer_2.Add(sizer_6, 0, flag=wx.ALIGN_CENTER_VERTICAL |
+                    wx.LEFT, border=30)
 
-        sizer_1.Add(sizer_2, 0, flag=wx.EXPAND|wx.ALL, border=10)
+        sizer_1.Add(sizer_2, 0, flag=wx.EXPAND | wx.ALL, border=10)
 
-        sizer_1.Add(self.notebook, 1, wx.EXPAND|wx.LEFT|wx.TOP|wx.RIGHT, 10)
+        sizer_1.Add(self.notebook, 1, wx.EXPAND |
+                    wx.LEFT | wx.TOP | wx.RIGHT, 10)
         self.SetSizer(sizer_1)
         sizer_1.Fit(self)
         self.Layout()
         # end wxGlade
 
+
 class SilhouetteMulti(inkex.Effect):
     def __init__(self, *args, **kwargs):
         inkex.Effect.__init__(self, *args, **kwargs)
 
-        self.OptionParser.add_option("-d", "--dry_run", type='inkbool', default=False)
+        self.OptionParser.add_option(
+            "-d", "--dry_run", type='inkbool', default=False)
 
     def get_style(self, element):
         if element.get('style') is not None:
@@ -617,7 +653,7 @@ class SilhouetteMulti(inkex.Effect):
         return style
 
     def get_color(self, element):
-        if element.tag == inkex.addNS( 'g', 'svg'):
+        if element.tag == inkex.addNS('g', 'svg'):
             # Sometimes Inkscape sets a stroke style on a group, which seems to
             # have no visual effect.  If we didn't ignore those, we'd cut those
             # objects twice.
@@ -674,12 +710,14 @@ class SilhouetteMulti(inkex.Effect):
     def effect(self):
         app = wx.App()
         self.split_objects_by_color()
-        self.frame = SilhouetteMultiFrame(colors=self.objects_by_color.keys(), run_callback=self.run, options=self.options)
+        self.frame = SilhouetteMultiFrame(
+            colors=self.objects_by_color.keys(), run_callback=self.run, options=self.options)
         self.frame.Show()
         app.MainLoop()
 
     def save_copy(self):
-        self.svg_file = NamedTemporaryFile(suffix='.svg', prefix='silhouette-multiple-actions')
+        self.svg_file = NamedTemporaryFile(
+            suffix='.svg', prefix='silhouette-multiple-actions')
         self.document.write(self.svg_file)
         self.svg_file.flush()
 
@@ -732,8 +770,9 @@ class SilhouetteMulti(inkex.Effect):
         # actual python script if the user cancels
         process = subprocess.Popen("exec " + command, shell=True)
 
-        dialog = wx.ProgressDialog(style=wx.PD_APP_MODAL|wx.PD_CAN_ABORT|wx.PD_ELAPSED_TIME,
-                                   message="Performing action %d of %d..." % (step, total),
+        dialog = wx.ProgressDialog(style=wx.PD_APP_MODAL | wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME,
+                                   message="Performing action %d of %d..." % (
+                                       step, total),
                                    title="Silhouette Multiple Actions")
 
         last_tick = time.time()
@@ -756,12 +795,14 @@ class SilhouetteMulti(inkex.Effect):
 
                 dialog.Destroy()
                 wx.Yield()
-                info_dialog(None, "Action aborted.  It may take awhile for the machine to cancel its operation.")
+                info_dialog(
+                    None, "Action aborted.  It may take awhile for the machine to cancel its operation.")
                 sys.exit(1)
 
         dialog.Destroy()
         wx.Yield()
         return process.returncode == 0
+
 
 def save_stderr():
     # GTK likes to spam stderr, which inkscape will show in a dialog.
@@ -797,6 +838,5 @@ if __name__ == "__main__":
             e.affect()
         except:
             traceback.print_exc()
-
 
     sys.exit(0)
